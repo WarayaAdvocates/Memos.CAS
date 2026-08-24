@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
+  <title>CAS Memo Repository</title>
+  <link rel="icon" href="https://wxyzofficial.sirv.com/USC-Election/cas.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Roboto,system-ui,sans-serif;}
+    body{background:#f2f5fa;display:flex;min-height:100vh;}
+    /* SIDEBAR */
+    .sidebar{width:260px;background:#0b2a4a;color:#eef4fc;display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform 0.25s;overflow-y:auto;box-shadow:2px 0 12px rgba(0,0,0,0.08);}
+    .sidebar-brand{display:flex;align-items:center;gap:10px;padding:0 1.2rem 1.8rem;border-bottom:1px solid rgba(255,255,255,0.06);}
+    .sidebar-brand img{height:44px;width:auto;object-fit:contain;}
+    .sidebar-brand span{font-weight:600;font-size:1.2rem;letter-spacing:-0.3px;color:#fff;}
+    .sidebar-nav{margin-top:1.2rem;flex:1;}
+    .sidebar-nav .nav-item{padding:0.6rem 1.2rem;display:flex;align-items:center;gap:12px;color:#b6c8dd;cursor:pointer;transition:0.15s;border-left:3px solid transparent;font-size:0.95rem;font-weight:500;}
+    .sidebar-nav .nav-item:hover{background:rgba(255,255,255,0.05);color:#fff;border-left-color:#f5b300;}
+    .sidebar-nav .nav-item.active{background:rgba(255,255,255,0.07);color:#fff;border-left-color:#f5b300;}
+    .sidebar-nav .nav-item i{width:20px;text-align:center;font-size:1.1rem;}
+    .sidebar-nav .section-label{padding:0.6rem 1.2rem 0.3rem;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:#7a95b0;font-weight:600;}
+    .sidebar-nav .year-item{padding:0.4rem 1.2rem 0.4rem 2.8rem;cursor:pointer;color:#b6c8dd;transition:0.1s;font-size:0.9rem;display:flex;justify-content:space-between;align-items:center;}
+    .sidebar-nav .year-item:hover{color:#fff;background:rgba(255,255,255,0.04);}
+    .sidebar-nav .year-item.active{color:#fff;font-weight:600;background:rgba(255,215,0,0.08);border-right:3px solid #f5b300;}
+    .sidebar-nav .year-item .delete-year-btn{background:transparent;border:none;color:#b6c8dd;cursor:pointer;font-size:0.7rem;padding:0.2rem 0.4rem;border-radius:4px;transition:0.1s;}
+    .sidebar-nav .year-item .delete-year-btn:hover{color:#ff6b6b;background:rgba(255,0,0,0.1);}
+    .sidebar-nav .add-btn{padding:0.4rem 1.2rem 0.4rem 2.8rem;color:#f5b300;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;gap:8px;}
+    .sidebar-nav .add-btn:hover{color:#ffd966;}
+    .sidebar-footer{border-top:1px solid rgba(255,255,255,0.06);padding:1rem 1.2rem;}
+    .sidebar-footer .user-info{display:flex;align-items:center;gap:12px;margin-bottom:0.6rem;}
+    .sidebar-footer .user-info i{font-size:1.6rem;color:#b6c8dd;}
+    .sidebar-footer .user-info div{line-height:1.3;}
+    .sidebar-footer .user-info .name{font-weight:600;color:#fff;font-size:0.95rem;}
+    .sidebar-footer .user-info .email{font-size:0.75rem;color:#7a95b0;}
+    .sidebar-footer .logout-btn{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:#eef4fc;padding:0.5rem;border-radius:30px;text-align:center;cursor:pointer;transition:0.15s;font-size:0.9rem;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .sidebar-footer .logout-btn:hover{background:rgba(255,70,70,0.15);border-color:#e74c3c;color:#ffb3b3;}
+    /* MAIN */
+    .main-content{flex:1;margin-left:260px;padding:1.8rem 2rem;min-height:100vh;}
+    .top-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:2rem;}
+    .top-bar h1{font-size:1.8rem;font-weight:600;color:#0b2a4a;}
+    .top-bar .search-wrap{display:flex;align-items:center;background:#fff;border-radius:40px;padding:0.2rem 0.2rem 0.2rem 1.2rem;box-shadow:0 4px 12px rgba(0,0,0,0.02);border:1px solid #e4eaf2;}
+    .top-bar .search-wrap input{border:none;padding:0.6rem 0.2rem;width:220px;font-size:0.9rem;background:transparent;outline:none;}
+    .top-bar .search-wrap button{background:#f5b300;border:none;border-radius:30px;padding:0.5rem 1rem;color:#0b2a4a;font-weight:600;cursor:pointer;transition:0.15s;display:flex;align-items:center;gap:6px;}
+    .top-bar .search-wrap button:hover{background:#e6a800;}
+    .mobile-toggle{display:none;background:#0b2a4a;color:#fff;border:none;border-radius:30px;padding:0.4rem 1rem;font-size:1.2rem;cursor:pointer;}
+    /* cards */
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1.2rem;margin-bottom:2rem;}
+    .stat-card{background:#fff;padding:1.2rem 1.2rem;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.02);border:1px solid #eef3f9;display:flex;align-items:center;gap:14px;}
+    .stat-card i{font-size:2rem;color:#f5b300;width:44px;text-align:center;}
+    .stat-card .info{line-height:1.3;}
+    .stat-card .info .number{font-size:1.8rem;font-weight:700;color:#0b2a4a;}
+    .stat-card .info .label{font-size:0.8rem;color:#6a7e96;}
+    .section-title{font-size:1.2rem;font-weight:600;color:#0b2a4a;margin:1.8rem 0 1rem;display:flex;align-items:center;gap:10px;}
+    .memo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.2rem;}
+    .memo-card{background:#fff;border-radius:16px;padding:1rem 1.2rem;border:1px solid #eef3f9;transition:0.1s;box-shadow:0 2px 4px rgba(0,0,0,0.02);}
+    .memo-card:hover{box-shadow:0 6px 18px rgba(0,0,0,0.04);}
+    .memo-card .top{display:flex;justify-content:space-between;align-items:start;}
+    .memo-card .top i{font-size:1.8rem;color:#f5b300;}
+    .memo-card .name{font-weight:600;font-size:1rem;color:#0b2a4a;margin:0.2rem 0 0.1rem;}
+    .memo-card .meta{font-size:0.8rem;color:#5b738b;display:flex;flex-wrap:wrap;gap:8px;margin:0.3rem 0;}
+    .memo-card .meta i{margin-right:3px;font-size:0.75rem;color:#7a95b0;}
+    .memo-card .actions{display:flex;gap:6px;margin-top:0.6rem;flex-wrap:wrap;}
+    .memo-card .actions button{background:#f2f6fc;border:none;padding:0.3rem 0.8rem;border-radius:30px;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;gap:6px;color:#1a3a5a;transition:0.1s;}
+    .memo-card .actions button:hover{background:#e3eaf3;}
+    .memo-card .actions .view-btn{background:#f5b30020;color:#b38f00;}
+    .memo-card .actions .view-btn:hover{background:#f5b30040;}
+    .memo-card .actions .del-btn{background:#fee;color:#b22234;}
+    .memo-card .actions .del-btn:hover{background:#fdd;}
+    .empty-state{padding:2.5rem;background:#fff;border-radius:20px;text-align:center;border:1px dashed #dce1ea;color:#5b738b;}
+    .empty-state i{font-size:2.8rem;color:#d0dae6;margin-bottom:0.8rem;}
+    .empty-state .btn-outline{background:transparent;border:1px solid #0b2a4a;padding:0.5rem 1.4rem;border-radius:40px;color:#0b2a4a;font-weight:600;cursor:pointer;margin-top:0.8rem;transition:0.1s;}
+    .empty-state .btn-outline:hover{background:#0b2a4a;color:#fff;}
+    /* MODAL overlay */
+    .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.25);backdrop-filter:blur(2px);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;}
+    .modal-box{background:#fff;border-radius:24px;max-width:560px;width:100%;padding:1.8rem 2rem;box-shadow:0 20px 50px rgba(0,0,0,0.15);max-height:90vh;overflow-y:auto;}
+    .modal-box .modal-title{font-size:1.4rem;font-weight:600;color:#0b2a4a;margin-bottom:1.2rem;display:flex;justify-content:space-between;align-items:center;}
+    .modal-box .modal-title button{background:none;border:none;font-size:1.6rem;cursor:pointer;color:#8a9aa8;}
+    .modal-box label{font-weight:500;font-size:0.9rem;color:#1f3a5a;display:block;margin:0.8rem 0 0.2rem;}
+    .modal-box input, .modal-box select{width:100%;padding:0.7rem 1rem;border:1px solid #dce1ea;border-radius:30px;font-size:0.95rem;background:#fafcff;}
+    .modal-box input:focus, .modal-box select:focus{outline:none;border-color:#0b2a4a;box-shadow:0 0 0 3px rgba(11,42,74,0.06);}
+    .modal-box .form-row{display:flex;gap:1rem;flex-wrap:wrap;}
+    .modal-box .form-row > *{flex:1;min-width:150px;}
+    .modal-actions{display:flex;gap:0.8rem;justify-content:flex-end;margin-top:1.5rem;}
+    .modal-actions .btn{background:#eef3f9;border:none;padding:0.6rem 1.6rem;border-radius:40px;font-weight:600;cursor:pointer;transition:0.1s;}
+    .modal-actions .btn-primary{background:#0b2a4a;color:#fff;}
+    .modal-actions .btn-primary:hover{background:#1a3a5a;}
+    .modal-actions .btn-danger{background:#b22234;color:#fff;}
+    .modal-actions .btn-danger:hover{background:#a02030;}
+    .modal-actions .btn-cancel{background:#eef3f9;color:#2a3a4a;}
+    .modal-actions .btn-cancel:hover{background:#dce3ed;}
+    .file-info{font-size:0.85rem;color:#2a4a6a;background:#f2f6fc;padding:0.4rem 1rem;border-radius:30px;display:inline-block;}
+    .file-info.error{background:#fee;color:#b22234;border:1px solid #fdd;}
+    .file-info.success{background:#e8f5e9;color:#2b7a4b;border:1px solid #c8e6c9;}
+    .hidden{display:none !important;}
+    /* responsive */
+    @media(max-width:820px){.sidebar{transform:translateX(-100%);width:280px;}.sidebar.open{transform:translateX(0);}.main-content{margin-left:0;padding:1.2rem;}.mobile-toggle{display:inline-block;}.top-bar .search-wrap input{width:140px;}}
+    @media(max-width:480px){.modal-box{padding:1.2rem;}.stats{grid-template-columns:1fr 1fr;}.memo-grid{grid-template-columns:1fr;}}
+    /* toast reused */
+    .toast-container{position:fixed;top:1.2rem;right:1.2rem;max-width:360px;z-index:9999;display:flex;flex-direction:column;gap:0.6rem;}
+    .toast{background:#fff;border-radius:16px;padding:0.9rem 1.2rem;box-shadow:0 10px 30px rgba(0,0,0,0.08);border-left:6px solid #0b2a4a;display:flex;align-items:center;gap:12px;animation:slideIn 0.25s ease;border:1px solid #edf2f9;}
+    .toast i{font-size:1.4rem;}.toast .msg{flex:1;font-size:0.95rem;color:#1a2a3a;}.toast .close-toast{background:none;border:none;font-size:1rem;color:#8a9aa8;cursor:pointer;}
+    .toast.success{border-left-color:#2b7a4b;}.toast.error{border-left-color:#b22234;}.toast.warning{border-left-color:#e67e22;}.toast.info{border-left-color:#2c7be0;}
+    @keyframes slideIn{from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:translateX(0);}}
+    /* Loading overlay */
+    .loading-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:1rem;}
+    .loading-overlay i{font-size:3rem;color:#0b2a4a;}
+    .loading-overlay p{color:#0b2a4a;font-weight:500;}
+    /* Settings styles */
+    .settings-section{background:#fff;border-radius:16px;padding:1.5rem;margin-bottom:1.5rem;border:1px solid #eef3f9;}
+    .settings-section h3{color:#0b2a4a;font-size:1.1rem;margin-bottom:0.8rem;display:flex;align-items:center;gap:10px;}
+    .settings-section .item-list{display:flex;flex-direction:column;gap:0.5rem;}
+    .settings-section .item-row{display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.8rem;background:#f8fafc;border-radius:8px;border:1px solid #eef3f9;}
+    .settings-section .item-row .item-name{font-weight:500;color:#1a3a5a;}
+    .settings-section .item-row .item-actions{display:flex;gap:6px;}
+    .settings-section .item-row .item-actions button{background:transparent;border:none;padding:0.2rem 0.6rem;border-radius:4px;cursor:pointer;font-size:0.8rem;transition:0.1s;}
+    .settings-section .item-row .item-actions .delete-settings-btn{color:#b22234;}
+    .settings-section .item-row .item-actions .delete-settings-btn:hover{background:#fee;color:#a02030;}
+    .settings-section .item-row .item-actions .view-settings-btn{color:#0b2a4a;}
+    .settings-section .item-row .item-actions .view-settings-btn:hover{background:#eef3f9;}
+    .settings-empty{color:#7a95b0;font-size:0.9rem;padding:0.5rem 0;}
+  </style>
+</head>
+<body>
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay">
+  <i class="fas fa-spinner fa-spin"></i>
+  <p>Loading CAS Memo Repository...</p>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand"><img src="https://wxyzofficial.sirv.com/USC-Election/cas.png" alt="CAS"><span>CAS Memo</span></div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" data-view="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</div>
+    <div class="nav-item" data-view="settings"><i class="fas fa-gear"></i> Settings</div>
+    <div class="section-label">YEARS</div>
+    <div id="yearList"></div>
+    <div class="add-btn" id="addYearBtn"><i class="fas fa-plus-circle"></i> Add Year</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-info"><i class="fas fa-user-circle"></i><div><div class="name" id="userName">User</div><div class="email" id="userEmail">email</div></div></div>
+    <div class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</div>
+  </div>
+</aside>
+<!-- MAIN -->
+<div class="main-content">
+  <div class="top-bar">
+    <div style="display:flex;align-items:center;gap:12px;"><button class="mobile-toggle" id="mobileToggle"><i class="fas fa-bars"></i></button><h1 id="pageTitle">Dashboard</h1></div>
+    <div class="search-wrap"><input type="text" id="searchInput" placeholder="Search memos..."><button id="searchBtn"><i class="fas fa-search"></i> Search</button></div>
+  </div>
+  <div id="contentArea">
+    <!-- dashboard -->
+    <div id="dashboardView">
+      <div class="stats" id="statsContainer"></div>
+      <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Recently Added</div>
+      <div id="recentMemos" class="memo-grid"></div>
+    </div>
+    <!-- folder view (years/folders) -->
+    <div id="folderView" class="hidden">
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem;" id="folderTabs"></div>
+      <div id="memoContainer"></div>
+    </div>
+    <!-- settings view -->
+    <div id="settingsView" class="hidden">
+      <div class="settings-section">
+        <h3><i class="fas fa-calendar"></i> Years</h3>
+        <div id="settingsYearsList" class="item-list"></div>
+      </div>
+      <div class="settings-section">
+        <h3><i class="fas fa-folder"></i> Folders</h3>
+        <div id="settingsFoldersList" class="item-list"></div>
+      </div>
+      <div class="settings-section">
+        <h3><i class="fas fa-file-pdf"></i> Memos</h3>
+        <div id="settingsMemosList" class="item-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL container -->
+<div id="modalContainer" class="modal-overlay hidden" onclick="if(event.target===this) closeModal()"><div class="modal-box" id="modalBox"></div></div>
+<!-- TOAST -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  // ---------- FIREBASE ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyAdwvS8k2uCh8Awkx9rb5-qPkKQXKpxMWo",
+    authDomain: "fd4dfh4.firebaseapp.com",
+    projectId: "fd4dfh4",
+    storageBucket: "fd4dfh4.firebasestorage.app",
+    messagingSenderId: "95646382164",
+    appId: "1:95646382164:web:7adf5be1af03f8197955c1",
+    measurementId: "G-GGCF0QEZNR"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  
+  // Maximum file size for Firestore (Base64 encoding increases size by ~33%)
+  // Firestore document limit is 1,048,576 bytes (1 MiB)
+  // With Base64 overhead, we need to limit the original file to about 700KB
+  const MAX_FILE_SIZE = 700 * 1024; // 700 KB (safe limit for Firestore)
+  const MAX_DISPLAY_SIZE = 700; // For display in KB
+
+  // ---------- DOM refs ----------
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  const sidebar = document.getElementById('sidebar');
+  const mobileToggle = document.getElementById('mobileToggle');
+  const yearList = document.getElementById('yearList');
+  const addYearBtn = document.getElementById('addYearBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const userName = document.getElementById('userName');
+  const userEmail = document.getElementById('userEmail');
+  const pageTitle = document.getElementById('pageTitle');
+  const dashboardView = document.getElementById('dashboardView');
+  const folderView = document.getElementById('folderView');
+  const settingsView = document.getElementById('settingsView');
+  const folderTabs = document.getElementById('folderTabs');
+  const memoContainer = document.getElementById('memoContainer');
+  const statsContainer = document.getElementById('statsContainer');
+  const recentMemos = document.getElementById('recentMemos');
+  const searchInput = document.getElementById('searchInput');
+  const searchBtn = document.getElementById('searchBtn');
+  const modalContainer = document.getElementById('modalContainer');
+  const modalBox = document.getElementById('modalBox');
+  const settingsYearsList = document.getElementById('settingsYearsList');
+  const settingsFoldersList = document.getElementById('settingsFoldersList');
+  const settingsMemosList = document.getElementById('settingsMemosList');
+
+  let currentUser = null;
+  let currentYear = null;
+  let currentFolder = null;
+  let allMemos = [];
+  let allYears = [];
+  let allFolders = [];
+  let isInitialized = false;
+  let currentView = 'dashboard';
+
+  // ---------- TOAST ----------
+  function showToast(msg, type='info', icon='fa-circle-info') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<i class="fas ${icon}"></i><span class="msg">${msg}</span><button class="close-toast"><i class="fas fa-xmark"></i></button>`;
+    c.appendChild(t);
+    t.querySelector('.close-toast').onclick = ()=>t.remove();
+    setTimeout(()=>t.remove(), 4800);
+  }
+
+  // ---------- MODAL ----------
+  function openModal(html) { modalBox.innerHTML = html; modalContainer.classList.remove('hidden'); }
+  function closeModal() { modalContainer.classList.add('hidden'); }
+
+  // ---------- AUTH GUARD ----------
+  auth.onAuthStateChanged(async user => {
+    if (!user) {
+      window.location.href = 'index.html';
+      return;
+    }
+    
+    try {
+      currentUser = user;
+      const doc = await db.collection('users').doc(user.uid).get();
+      const data = doc.data() || { name: user.displayName || 'User', email: user.email };
+      userName.textContent = data.name || 'User';
+      userEmail.textContent = data.email || user.email;
+      
+      await loadYears();
+      await loadDashboard();
+      
+      loadingOverlay.style.display = 'none';
+      isInitialized = true;
+      
+    } catch (error) {
+      console.error('Error initializing app:', error);
+      showToast('Error loading data. Please refresh.', 'error');
+      loadingOverlay.style.display = 'none';
+    }
+  });
+
+  // ---------- NAVIGATION ----------
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function() {
+      const view = this.dataset.view;
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      this.classList.add('active');
+      
+      if (view === 'dashboard') {
+        currentView = 'dashboard';
+        dashboardView.classList.remove('hidden');
+        folderView.classList.add('hidden');
+        settingsView.classList.add('hidden');
+        pageTitle.textContent = 'Dashboard';
+        loadDashboard();
+      } else if (view === 'settings') {
+        currentView = 'settings';
+        dashboardView.classList.add('hidden');
+        folderView.classList.add('hidden');
+        settingsView.classList.remove('hidden');
+        pageTitle.textContent = 'Settings - Manage Data';
+        loadSettings();
+      }
+      sidebar.classList.remove('open');
+    });
+  });
+
+  // ---------- LOAD YEARS ----------
+  async function loadYears() {
+    try {
+      const snap = await db.collection('years').orderBy('year', 'desc').get();
+      allYears = [];
+      snap.forEach(d => allYears.push({ id: d.id, ...d.data() }));
+      renderYears();
+      
+      if (allYears.length > 0 && !currentYear) {
+        currentYear = allYears[0].year;
+        await selectYear(currentYear);
+      } else if (allYears.length === 0) {
+        currentYear = null;
+        if (currentView === 'dashboard') {
+          folderView.classList.add('hidden');
+          dashboardView.classList.remove('hidden');
+          pageTitle.textContent = 'Dashboard';
+        }
+      }
+    } catch (error) {
+      console.error('Error loading years:', error);
+      showToast('Error loading years', 'error');
+    }
+  }
+
+  function renderYears() {
+    yearList.innerHTML = '';
+    allYears.forEach(y => {
+      const div = document.createElement('div');
+      div.className = `year-item ${currentYear === y.year ? 'active' : ''}`;
+      div.innerHTML = `<span>${y.year}</span>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <button class="delete-year-btn" onclick="event.stopPropagation();confirmDeleteYear('${y.id}','${y.year}')"><i class="fas fa-trash"></i></button>
+          <i class="fas fa-chevron-right" style="font-size:0.6rem;opacity:0.5;"></i>
+        </div>`;
+      div.onclick = ()=> selectYear(y.year);
+      yearList.appendChild(div);
+    });
+  }
+
+  async function selectYear(year) {
+    currentYear = year;
+    currentFolder = null;
+    renderYears();
+    
+    try {
+      const yearDoc = allYears.find(y => y.year === year);
+      if (!yearDoc) { showToast('Year not found', 'error'); return; }
+      
+      const snap = await db.collection('years').doc(yearDoc.id).collection('folders').orderBy('name').get();
+      allFolders = [];
+      snap.forEach(d => allFolders.push({ id: d.id, ...d.data() }));
+      
+      if (currentView === 'dashboard') {
+        dashboardView.classList.add('hidden');
+        folderView.classList.remove('hidden');
+        settingsView.classList.add('hidden');
+        pageTitle.textContent = `${year} Memos`;
+      }
+      renderFolders();
+      
+      if (allFolders.length > 0) {
+        await selectFolder(allFolders[0].id);
+      } else {
+        memoContainer.innerHTML = `<div class="empty-state"><i class="fas fa-folder-open"></i><p>No folders available</p><p style="font-size:0.9rem;">Create your first memo folder for ${year}.</p><button class="btn-outline" onclick="showAddFolder()"><i class="fas fa-plus"></i> Add Folder</button></div>`;
+      }
+    } catch (error) {
+      console.error('Error selecting year:', error);
+      showToast('Error loading folders', 'error');
+    }
+  }
+
+  function renderFolders() {
+    folderTabs.innerHTML = '';
+    allFolders.forEach(f => {
+      const btn = document.createElement('button');
+      btn.style.cssText = `background:${currentFolder===f.id?'#0b2a4a':'#eef3f9'};color:${currentFolder===f.id?'#fff':'#0b2a4a'};border:none;padding:0.4rem 1.2rem;border-radius:30px;font-weight:600;cursor:pointer;font-size:0.9rem;transition:0.1s;display:flex;align-items:center;gap:6px;`;
+      btn.innerHTML = `${f.name} <span style="font-size:0.7rem;opacity:0.6;" onclick="event.stopPropagation();confirmDeleteFolder('${f.id}','${f.name}')"><i class="fas fa-trash"></i></span>`;
+      btn.onclick = ()=> selectFolder(f.id);
+      folderTabs.appendChild(btn);
+    });
+    const add = document.createElement('button');
+    add.style.cssText = `background:transparent;border:1px dashed #b6c8dd;padding:0.4rem 1.2rem;border-radius:30px;cursor:pointer;color:#2a4a6a;font-weight:500;`;
+    add.innerHTML = '<i class="fas fa-plus"></i> Add Folder';
+    add.onclick = showAddFolder;
+    folderTabs.appendChild(add);
+  }
+
+  async function selectFolder(folderId) {
+    currentFolder = folderId;
+    renderFolders();
+    await loadMemos(folderId);
+  }
+
+  // ---------- LOAD MEMOS ----------
+  async function loadMemos(folderId) {
+    try {
+      const yearDoc = allYears.find(y => y.year === currentYear);
+      if (!yearDoc) return;
+      
+      const snap = await db.collection('memos')
+        .where('yearId', '==', yearDoc.id)
+        .where('folderId', '==', folderId)
+        .orderBy('memoDate', 'desc')
+        .get();
+      
+      allMemos = [];
+      snap.forEach(d => allMemos.push({ id: d.id, ...d.data() }));
+      renderMemos(allMemos);
+    } catch (error) {
+      console.error('Error loading memos:', error);
+      showToast('Error loading memos', 'error');
+    }
+  }
+
+  function renderMemos(memos) {
+    if (!memos || memos.length === 0) {
+      memoContainer.innerHTML = `<div class="empty-state"><i class="fas fa-file-pdf"></i><p>No memos found</p><p style="font-size:0.9rem;">Upload a memorandum to this folder.</p><button class="btn-outline" onclick="showUploadMemo()"><i class="fas fa-upload"></i> Upload Memo</button></div>`;
+      return;
+    }
+    let html = '<div class="memo-grid">';
+    memos.forEach(m => {
+      html += `<div class="memo-card">
+        <div class="top"><i class="fas fa-file-pdf"></i><span style="font-size:0.7rem;background:#eef3f9;padding:0.1rem 0.6rem;border-radius:30px;">${m.fileSize ? (m.fileSize/1024).toFixed(1)+' KB' : ''}</span></div>
+        <div class="name">${m.memoName || 'Untitled'}</div>
+        <div class="meta"><i class="fas fa-calendar"></i> ${m.memoDate ? new Date(m.memoDate).toLocaleDateString() : ''}  <i class="fas fa-folder"></i> ${m.folderName || ''}</div>
+        <div class="meta"><i class="fas fa-user"></i> ${m.uploadedByName || 'unknown'}  <i class="fas fa-clock"></i> ${m.createdAt ? new Date(m.createdAt.seconds*1000).toLocaleDateString() : ''}</div>
+        <div class="actions">
+          <button class="view-btn" onclick="viewPdf('${m.id}')"><i class="fas fa-eye"></i> View</button>
+          <button onclick="downloadPdf('${m.id}')"><i class="fas fa-download"></i> Download</button>
+          <button class="del-btn" onclick="confirmDelete('${m.id}','${m.memoName}')"><i class="fas fa-trash"></i> Delete</button>
+          <button onclick="showEditMemo('${m.id}')"><i class="fas fa-pen"></i> Edit</button>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+    memoContainer.innerHTML = html;
+  }
+
+  // ---------- DASHBOARD ----------
+  async function loadDashboard() {
+    try {
+      const memosSnap = await db.collection('memos').get();
+      const yearsSnap = await db.collection('years').get();
+      const total = memosSnap.size;
+      const years = yearsSnap.size;
+      
+      let foldersCount = 0;
+      const yrs = await db.collection('years').get();
+      for (const yd of yrs.docs) {
+        const f = await db.collection('years').doc(yd.id).collection('folders').get();
+        foldersCount += f.size;
+      }
+      
+      let yearMemos = 0;
+      if (currentYear) {
+        const yDoc = allYears.find(y => y.year === currentYear);
+        if (yDoc) {
+          const snap = await db.collection('memos').where('yearId', '==', yDoc.id).get();
+          yearMemos = snap.size;
+        }
+      }
+      
+      statsContainer.innerHTML = `
+        <div class="stat-card"><i class="fas fa-file-pdf"></i><div class="info"><div class="number">${total}</div><div class="label">Total Memos</div></div></div>
+        <div class="stat-card"><i class="fas fa-calendar"></i><div class="info"><div class="number">${yearMemos}</div><div class="label">${currentYear || 'Year'} Memos</div></div></div>
+        <div class="stat-card"><i class="fas fa-layer-group"></i><div class="info"><div class="number">${years}</div><div class="label">Total Years</div></div></div>
+        <div class="stat-card"><i class="fas fa-folder"></i><div class="info"><div class="number">${foldersCount}</div><div class="label">Categories</div></div></div>
+      `;
+      
+      const recent = await db.collection('memos').orderBy('createdAt', 'desc').limit(6).get();
+      let html = '';
+      recent.forEach(d => {
+        const m = d.data();
+        html += `<div class="memo-card"><div class="top"><i class="fas fa-file-pdf"></i></div><div class="name">${m.memoName || 'Untitled'}</div><div class="meta"><i class="fas fa-calendar"></i> ${m.memoDate ? new Date(m.memoDate).toLocaleDateString() : ''}  <i class="fas fa-folder"></i> ${m.folderName || ''}</div><div class="meta"><i class="fas fa-user"></i> ${m.uploadedByName || ''}</div></div>`;
+      });
+      recentMemos.innerHTML = html || '<div class="empty-state"><i class="fas fa-inbox"></i><p>No memos yet</p></div>';
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+      showToast('Error loading dashboard', 'error');
+    }
+  }
+
+  // ---------- SETTINGS ----------
+  async function loadSettings() {
+    try {
+      // Load years
+      let yearsHtml = '';
+      if (allYears.length === 0) {
+        yearsHtml = '<div class="settings-empty">No years created yet.</div>';
+      } else {
+        allYears.forEach(y => {
+          yearsHtml += `
+            <div class="item-row">
+              <span class="item-name"><i class="fas fa-calendar"></i> ${y.year}</span>
+              <div class="item-actions">
+                <button class="delete-settings-btn" onclick="confirmDeleteYear('${y.id}','${y.year}')"><i class="fas fa-trash"></i> Delete</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+      settingsYearsList.innerHTML = yearsHtml;
+
+      // Load folders
+      let foldersHtml = '';
+      if (allFolders.length === 0) {
+        foldersHtml = '<div class="settings-empty">No folders created yet.</div>';
+      } else {
+        allFolders.forEach(f => {
+          foldersHtml += `
+            <div class="item-row">
+              <span class="item-name"><i class="fas fa-folder"></i> ${f.name} (${currentYear})</span>
+              <div class="item-actions">
+                <button class="delete-settings-btn" onclick="confirmDeleteFolder('${f.id}','${f.name}')"><i class="fas fa-trash"></i> Delete</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+      settingsFoldersList.innerHTML = foldersHtml;
+
+      // Load memos
+      const memosSnap = await db.collection('memos').get();
+      let memosHtml = '';
+      if (memosSnap.size === 0) {
+        memosHtml = '<div class="settings-empty">No memos uploaded yet.</div>';
+      } else {
+        let count = 0;
+        memosSnap.forEach(d => {
+          const m = d.data();
+          if (count < 20) {
+            memosHtml += `
+              <div class="item-row">
+                <span class="item-name"><i class="fas fa-file-pdf"></i> ${m.memoName || 'Untitled'} (${m.year || 'N/A'})</span>
+                <div class="item-actions">
+                  <button class="view-settings-btn" onclick="viewPdf('${d.id}')"><i class="fas fa-eye"></i> View</button>
+                  <button class="delete-settings-btn" onclick="confirmDelete('${d.id}','${m.memoName}')"><i class="fas fa-trash"></i> Delete</button>
+                </div>
+              </div>
+            `;
+            count++;
+          }
+        });
+        if (memosSnap.size > 20) {
+          memosHtml += `<div class="settings-empty" style="margin-top:0.5rem;">... and ${memosSnap.size - 20} more memos</div>`;
+        }
+      }
+      settingsMemosList.innerHTML = memosHtml;
+    } catch (error) {
+      console.error('Error loading settings:', error);
+      showToast('Error loading settings', 'error');
+    }
+  }
+
+  // ---------- DELETE YEAR ----------
+  function confirmDeleteYear(yearId, yearName) {
+    openModal(`
+      <div class="modal-title">Delete Year <button onclick="closeModal()"><i class="fas fa-xmark"></i></button></div>
+      <p>Are you sure you want to permanently delete <strong>"${yearName}"</strong>?</p>
+      <p style="color:#b22234;font-size:0.9rem;">This will also delete all folders and memos inside this year.</p>
+      <div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancel</button><button class="btn btn-danger" id="confirmDeleteYearBtn">Delete Year</button></div>
+    `);
+    document.getElementById('confirmDeleteYearBtn').onclick = async ()=>{
+      try {
+        const yearDoc = allYears.find(y => y.id === yearId);
+        if (yearDoc) {
+          const memosSnap = await db.collection('memos').where('yearId', '==', yearId).get();
+          const batch = db.batch();
+          memosSnap.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+          
+          const foldersSnap = await db.collection('years').doc(yearId).collection('folders').get();
+          const batch2 = db.batch();
+          foldersSnap.forEach(doc => batch2.delete(doc.ref));
+          await batch2.commit();
+        }
+        
+        await db.collection('years').doc(yearId).delete();
+        closeModal();
+        showToast('Year deleted successfully!', 'success');
+        await loadYears();
+        if (allYears.length > 0) {
+          await selectYear(allYears[0].year);
+        } else {
+          currentYear = null;
+          folderView.classList.add('hidden');
+          dashboardView.classList.remove('hidden');
+          pageTitle.textContent = 'Dashboard';
+        }
+        await loadDashboard();
+      } catch (error) {
+        console.error('Error deleting year:', error);
+        showToast('Error deleting year', 'error');
+      }
+    };
+  }
+
+  // ---------- DELETE FOLDER ----------
+  function confirmDeleteFolder(folderId, folderName) {
+    openModal(`
+      <div class="modal-title">Delete Folder <button onclick="closeModal()"><i class="fas fa-xmark"></i></button></div>
+      <p>Are you sure you want to permanently delete folder <strong>"${folderName}"</strong>?</p>
+      <p style="color:#b22234;font-size:0.9rem;">This will also delete all memos inside this folder.</p>
+      <div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancel</button><button class="btn btn-danger" id="confirmDeleteFolderBtn">Delete Folder</button></div>
+    `);
+    document.getElementById('confirmDeleteFolderBtn').onclick = async ()=>{
+      try {
+        const memosSnap = await db.collection('memos').where('folderId', '==', folderId).get();
+        const batch = db.batch();
+        memosSnap.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        
+        const yearDoc = allYears.find(y => y.year === currentYear);
+        if (yearDoc) {
+          await db.collection('years').doc(yearDoc.id).collection('folders').doc(folderId).delete();
+        }
+        closeModal();
+        showToast('Folder deleted successfully!', 'success');
+        await selectYear(currentYear);
+        await loadDashboard();
+      } catch (error) {
+        console.error('Error deleting folder:', error);
+        showToast('Error deleting folder', 'error');
+      }
+    };
+  }
+
+  // ---------- ADD YEAR ----------
+  addYearBtn.onclick = ()=> {
+    openModal(`
+      <div class="modal-title">Add Year <button onclick="closeModal()"><i class="fas fa-xmark"></i></button></div>
+      <label>Year (4 digits)</label>
+      <input type="number" id="yearInput" placeholder="e.g. 2027" min="2000" max="2100">
+      <div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="saveYearBtn">Save</button></div>
+    `);
+    document.getElementById('saveYearBtn').onclick = async ()=>{
+      const val = document.getElementById('yearInput').value.trim();
+      if (!val || val.length!==4 || isNaN(val)) { showToast('Enter a valid 4-digit year.', 'warning'); return; }
+      if (allYears.some(y => y.year === val)) { showToast('Year already exists.', 'warning'); return; }
+      try {
+        await db.collection('years').add({ year: val, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        closeModal();
+        showToast('Year added!', 'success');
+        await loadYears();
+        await selectYear(val);
+        await loadDashboard();
+      } catch (error) {
+        console.error('Error adding year:', error);
+        showToast('Error adding year', 'error');
+      }
+    };
+  };
+
+  // ---------- ADD FOLDER ----------
+  function showAddFolder() {
+    openModal(`
+      <div class="modal-title">Add Folder <button onclick="closeModal()"><i class="fas fa-xmark"></i></button></div>
+      <label>Folder Name</label>
+      <input type="text" id="folderNameInput" placeholder="e.g. Office Memo">
+      <div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="saveFolderBtn">Save</button></div>
+    `);
+    document.getElementById('saveFolderBtn').onclick = async ()=>{
+      const name = document.getElementById('folderNameInput').value.trim();
+      if (!name) { showToast('Folder name is required.', 'warning'); return; }
+      const yearDoc = allYears.find(y => y.year === currentYear);
+      if (!yearDoc) return;
+      try {
+        await db.collection('years').doc(yearDoc.id).collection('folders').add({ name, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        closeModal();
+        showToast('Folder created!', 'success');
+        await selectYear(currentYear);
+      } catch (error) {
+        console.error('Error adding folder:', error);
+        showToast('Error adding folder', 'error');
+      }
+    };
+  }
+
+  // ---------- UPLOAD MEMO ----------
+  function showUploadMemo() {
+    const yearDoc = allYears.find(y => y.year === currentYear);
+    if (!yearDoc) { showToast('Select a year first.', 'warning'); return; }
+    const folderOpts = allFolders.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+    openModal(`
+      <div class="modal-title">Upload Memo <button onclick="closeModal()"><i class="fas fa-xmark"></i></button></div>
+      <label>Memo Name</label><input type="text" id="memoNameInput" placeholder="Memorandum on ...">
+      <label>Memo Date</label><input type="date" id="memoDateInput">
+      <label>Folder</label><select id="folderSelect">${folderOpts}</select>
+      <label>PDF File (max ${MAX_DISPLAY_SIZE} KB)</label><input type="file" id="pdfFileInput" accept=".pdf">
+      <div id="fileInfo" class="file-info" style="margin-top:0.3rem;">No file selected</div>
+      <div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="uploadMemoBtn">Upload</button></div>
+    `);
+    const fileInput = document.getElementById('pdfFileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    fileInput.onchange = ()=>{
+      if (fileInput.files.length) {
+        const f = fileInput.files[0];
+        if (f.type !== 'application/pdf') { 
+          showToast('Only PDF files allowed.', 'error'); 
+          fileInput.value = ''; 
+          fileInfo.textContent = 'No file selected';
+          fileInfo.className = 'file-info error';
+          return; 
+        }
+        if (f.size > MAX_FILE_SIZE) { 
+          showToast(`File exceeds ${MAX_DISPLAY_SIZE} KB limit. Please compress your PDF.`, 'error'); 
+          fileInput.value = ''; 
+          fileInfo.textContent = `File too large: ${(f.size/1024).toFixed(1)} KB (max ${MAX_DISPLAY_SIZE} KB)`;
+          fileInfo.className = 'file-info error';
+          return; 
+        }
+        fileInfo.textContent = `${f.name} (${(f.size/1024).toFixed(1)} KB)`;
+        fileInfo.className = 'file-info success';
+      }
+    };
+    document.getElementById('uploadMemoBtn').onclick = async ()=>{
+      const name = document.getElementById('memoNameInput').value.trim();
+      const date = document.getElementById('memoDateInput').value;
+      const folderId = document.getElementById('folderSelect').value;
+      const file = document.getElementById('pdfFileInput').files[0];
+      if (!name || !date || !file) { showToast('Please fill all fields and select a PDF.', 'warning'); return; }
+      const folder = allFolders.find(f => f.id === folderId);
+      if (!folder) return;
+      
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const base64 = e.target.result.split(',')[1];
+          
+          // Double-check Base64 size before uploading
+          if (base64.length > 900000) {
+            showToast('PDF is too large after encoding. Please use a smaller file.', 'error');
+            return;
+          }
+          
+          const yearDoc = allYears.find(y => y.year === currentYear);
+          await db.collection('memos').add({
+            memoName: name,
+            memoDate: new Date(date),
+            year: currentYear,
+            yearId: yearDoc.id,
+            folderId: folderId,
+            folderName: folder.name,
+            fileName: file.name,
+            fileType: 'pdf',
+            fileSize: file.size,
+            base64Data: base64,
+            uploadedBy: currentUser.uid,
+            uploadedByName: userName.textContent || 'User',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          closeModal();
+          showToast('Memo uploaded successfully!', 'success');
+          await selectFolder(folderId);
+          await loadDashboard();
+        } catch (error) {
+          console.error('Error uploading memo:', error);
+          if (error.message && error.message.includes('longer than')) {
+            showToast('PDF file is too large. Please compress the PDF file and try again.', 'error');
+          } else {
+            showToast('Error uploading memo: ' + error.message, 'error');
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+  }
+
+  // ---------- VIEW PDF ----------
+  async function viewPdf(memoId) {
+    try {
+      const doc = await db.collection('memos').doc(memoId).get();
+      const data = doc.data();
+      if (!data || !data.base64Data) { showToast('PDF data not found.', 'error'); return; }
+      const binary = atob(data.base64Data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      openModal(`
+        <div class="modal-title">${data.memoName || 'PDF'} <button onclick="closeModal()"><i class="fas fa-xmark"></i></button></div>
+        <iframe src="${url}" style="width:100%;height:70vh;border:none;border-radius:12px;"></iframe>
+        <div class="modal-actions"><button class="btn btn-primary" onclick="downloadPdf('${memoId}')"><i class="fas fa-download"></i> Download</button><button class="btn btn-cancel" onclick="closeModal()">Close</button></div>
+      `);
+    } catch (error) {
+      console.error('Error viewing PDF:', error);
+      showToast('Error viewing PDF', 'error');
+    }
+  }
+
+  // ---------- DOWNLOAD PDF ----------
+  async function downloadPdf(memoId) {
+    try {
+      const doc = await db.collection('memos').doc(memoId).get();
+      const data = doc.data();
+      if (!data || !data.base64Data) { showToast('PDF data not found.', 'error'); return; }
+      const binary = atob(data.base64Data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.fileName || 'memo.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      showToast('Error downloading PDF', 'error');
+    }
+  }
+
+  // ---------- DELETE CONFIRM ----------
+  function confirmDelete(memoId, name) {
+    openModal(`
+      <div class="modal-title">Delete Memo? <button onclick="closeModal()"><i class="fas fa-xmark"></i></button></div>
+      <p>Are you sure you want to permanently delete <strong>"${name || 'this memo'}"</strong>?</p>
+      <p style="color:#b22234;font-size:0.9rem;">This action cannot be undone.</p>
+      <div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancel</button><button class="btn btn-danger" id="confirmDeleteBtn">Delete Memo</button></div>
+    `);
+    document.getElementById('confirmDeleteBtn').onclick = async ()=>{
+      try {
+        await db.collection('memos').doc(memoId).delete();
+        closeModal();
+        showToast('Memo deleted.', 'success');
+        await selectFolder(currentFolder);
+        await loadDashboard();
+      } catch (error) {
+        console.error('Error deleting memo:', error);
+        showToast('Error deleting memo', 'error');
+      }
+    };
+  }
+
+  // ---------- EDIT MEMO ----------
+  async function showEditMemo(memoId) {
+    try {
+      const doc = await db.collection('memos').doc(memoId).get();
+      const data = doc.data();
+      if (!data) return;
+      
+      const folderOpts = allFolders.map(f => `<option value="${f.id}" ${f.id===data.folderId?'selected':''}>${f.name}</option>`).join('');
+      openModal(`
+        <div class="modal-title">Edit Memo <button onclick="closeModal()"><i class="fas fa-xmark"></i></button></div>
+        <label>Memo Name</label><input type="text" id="editMemoName" value="${data.memoName || ''}">
+        <label>Memo Date</label><input type="date" id="editMemoDate" value="${data.memoDate ? new Date(data.memoDate).toISOString().split('T')[0] : ''}">
+        <label>Folder</label><select id="editFolderSelect">${folderOpts}</select>
+        <label>Replace PDF (optional, max ${MAX_DISPLAY_SIZE} KB)</label><input type="file" id="editPdfFile" accept=".pdf">
+        <div id="editFileInfo" class="file-info" style="margin-top:0.3rem;">Current: ${data.fileName || 'none'}</div>
+        <div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="saveEditBtn">Save Changes</button></div>
+      `);
+      
+      const fileInput = document.getElementById('editPdfFile');
+      const fileInfo = document.getElementById('editFileInfo');
+      fileInput.onchange = ()=>{
+        if (fileInput.files.length) {
+          const f = fileInput.files[0];
+          if (f.type !== 'application/pdf') { showToast('Only PDF files allowed.', 'error'); fileInput.value = ''; fileInfo.textContent = 'Current: '+data.fileName; fileInfo.className = 'file-info error'; return; }
+          if (f.size > MAX_FILE_SIZE) { showToast(`File exceeds ${MAX_DISPLAY_SIZE} KB limit.`, 'error'); fileInput.value = ''; fileInfo.textContent = 'Current: '+data.fileName; fileInfo.className = 'file-info error'; return; }
+          fileInfo.textContent = `New: ${f.name} (${(f.size/1024).toFixed(1)} KB)`;
+          fileInfo.className = 'file-info success';
+        }
+      };
+      
+      document.getElementById('saveEditBtn').onclick = async ()=>{
+        const name = document.getElementById('editMemoName').value.trim();
+        const date = document.getElementById('editMemoDate').value;
+        const folderId = document.getElementById('editFolderSelect').value;
+        const file = document.getElementById('editPdfFile').files[0];
+        if (!name || !date) { showToast('Name and date required.', 'warning'); return; }
+        const folder = allFolders.find(f => f.id === folderId);
+        if (!folder) return;
+        
+        let updateData = { memoName: name, memoDate: new Date(date), folderId, folderName: folder.name, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+        
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            try {
+              const base64 = e.target.result.split(',')[1];
+              if (base64.length > 900000) {
+                showToast('PDF is too large after encoding. Please use a smaller file.', 'error');
+                return;
+              }
+              updateData.base64Data = base64;
+              updateData.fileName = file.name;
+              updateData.fileSize = file.size;
+              await db.collection('memos').doc(memoId).update(updateData);
+              closeModal();
+              showToast('Memo updated!', 'success');
+              await selectFolder(currentFolder);
+              await loadDashboard();
+            } catch (error) {
+              console.error('Error updating memo:', error);
+              if (error.message && error.message.includes('longer than')) {
+                showToast('PDF file is too large. Please compress the PDF file and try again.', 'error');
+              } else {
+                showToast('Error updating memo: ' + error.message, 'error');
+              }
+            }
+          };
+          reader.readAsDataURL(file);
+        } else {
+          try {
+            await db.collection('memos').doc(memoId).update(updateData);
+            closeModal();
+            showToast('Memo updated!', 'success');
+            await selectFolder(currentFolder);
+            await loadDashboard();
+          } catch (error) {
+            console.error('Error updating memo:', error);
+            showToast('Error updating memo', 'error');
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Error loading memo for edit:', error);
+      showToast('Error loading memo', 'error');
+    }
+  }
+
+  // ---------- SEARCH ----------
+  searchBtn.onclick = async ()=>{
+    const term = searchInput.value.trim().toLowerCase();
+    if (!term) { showToast('Enter a search term.', 'info'); return; }
+    try {
+      const snap = await db.collection('memos').get();
+      const results = [];
+      snap.forEach(d => {
+        const data = d.data();
+        const str = `${data.memoName||''} ${data.folderName||''} ${data.year||''} ${data.uploadedByName||''} ${data.fileName||''} ${data.memoDate ? new Date(data.memoDate).toLocaleDateString() : ''}`.toLowerCase();
+        if (str.includes(term)) results.push({ id: d.id, ...data });
+      });
+      if (results.length === 0) { showToast('No matching memos found.', 'info'); return; }
+      dashboardView.classList.add('hidden');
+      folderView.classList.remove('hidden');
+      settingsView.classList.add('hidden');
+      pageTitle.textContent = `Search: "${term}" (${results.length})`;
+      renderMemos(results);
+    } catch (error) {
+      console.error('Error searching:', error);
+      showToast('Error searching memos', 'error');
+    }
+  };
+
+  // ---------- LOGOUT ----------
+  logoutBtn.onclick = ()=>{
+    openModal(`
+      <div class="modal-title">Logout <button onclick="closeModal()"><i class="fas fa-xmark"></i></button></div>
+      <p>Are you sure you want to logout?</p>
+      <div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="confirmLogoutBtn">Logout</button></div>
+    `);
+    document.getElementById('confirmLogoutBtn').onclick = ()=>{
+      auth.signOut();
+      closeModal();
+      window.location.href = 'index.html';
+    };
+  };
+
+  // ---------- SIDEBAR TOGGLE ----------
+  mobileToggle.onclick = ()=> sidebar.classList.toggle('open');
+
+  console.log('CAS Memo Repository ready.');
+</script>
+</body>
+</html>

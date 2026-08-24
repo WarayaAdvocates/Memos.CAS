@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
+  <title>CAS Memo Repository</title>
+  <link rel="icon" href="https://wxyzofficial.sirv.com/USC-Election/cas.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
+    body { background:#f5f7fb; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .auth-wrapper { width:100%; max-width:480px; padding:1.5rem; }
+    .auth-card { background:#fff; border-radius:20px; box-shadow:0 12px 30px rgba(0,20,50,0.08); padding:2rem 1.8rem; border:1px solid rgba(0,40,100,0.05); }
+    .logo-area { display:flex; flex-direction:column; align-items:center; margin-bottom:1.8rem; }
+    .logo-area img { height:70px; width:auto; object-fit:contain; margin-bottom:0.4rem; }
+    .logo-area h2 { color:#0b2a4a; font-weight:600; font-size:1.6rem; letter-spacing:-0.5px; }
+    .logo-area span { color:#f5b300; font-weight:500; letter-spacing:1px; font-size:0.9rem; background:#fef7e0; padding:0.2rem 1rem; border-radius:30px; }
+    .auth-tabs { display:flex; gap:0.5rem; margin:1.2rem 0 1.5rem; border-bottom:2px solid #e9edf4; }
+    .auth-tabs button { background:transparent; border:none; padding:0.6rem 0.2rem; font-weight:600; font-size:1rem; color:#6a7a8e; flex:1; cursor:pointer; border-bottom:3px solid transparent; transition:0.2s; }
+    .auth-tabs button.active { color:#0b2a4a; border-bottom-color:#f5b300; }
+    .auth-form { display:flex; flex-direction:column; gap:1rem; }
+    .input-group { position:relative; }
+    .input-group i { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#8a9aa8; font-size:1rem; }
+    .input-group input { width:100%; padding:0.8rem 1rem 0.8rem 2.8rem; border:1px solid #dce1ea; border-radius:40px; font-size:0.95rem; background:#fafcff; transition:0.15s; }
+    .input-group input:focus { border-color:#0b2a4a; outline:none; background:#fff; box-shadow:0 0 0 3px rgba(11,42,74,0.08); }
+    .input-group .toggle-pw { position:absolute; right:14px; top:50%; transform:translateY(-50%); background:none; border:none; color:#8a9aa8; cursor:pointer; font-size:1rem; }
+    .btn-primary { background:#0b2a4a; color:#fff; border:none; padding:0.8rem; border-radius:40px; font-weight:600; font-size:1rem; cursor:pointer; transition:0.15s; margin-top:0.4rem; }
+    .btn-primary:hover { background:#1a3a5a; box-shadow:0 6px 14px rgba(11,42,74,0.15); }
+    .btn-primary:disabled { opacity:0.6; cursor:not-allowed; }
+    .auth-footer { text-align:center; font-size:0.9rem; color:#4b5b6e; margin-top:1.2rem; }
+    .auth-footer a { color:#0b2a4a; font-weight:600; cursor:pointer; text-decoration:none; }
+    .auth-footer a:hover { text-decoration:underline; }
+    .error-msg { color:#b22234; font-size:0.85rem; background:#fff0f0; padding:0.4rem 1rem; border-radius:30px; display:flex; align-items:center; gap:6px; }
+    .hidden { display:none !important; }
+    .toast-container { position:fixed; top:1.2rem; right:1.2rem; max-width:360px; z-index:9999; display:flex; flex-direction:column; gap:0.6rem; }
+    .toast { background:#fff; border-radius:16px; padding:0.9rem 1.2rem; box-shadow:0 10px 30px rgba(0,0,0,0.08); border-left:6px solid #0b2a4a; display:flex; align-items:center; gap:12px; animation:slideIn 0.25s ease; border:1px solid #edf2f9; }
+    .toast i { font-size:1.4rem; }
+    .toast .msg { flex:1; font-size:0.95rem; color:#1a2a3a; }
+    .toast .close-toast { background:none; border:none; font-size:1rem; color:#8a9aa8; cursor:pointer; }
+    .toast.success { border-left-color:#2b7a4b; }
+    .toast.error { border-left-color:#b22234; }
+    .toast.warning { border-left-color:#e67e22; }
+    .toast.info { border-left-color:#2c7be0; }
+    @keyframes slideIn { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:translateX(0); } }
+    @media (max-width:480px) { .auth-card { padding:1.5rem 1rem; } }
+  </style>
+</head>
+<body>
+<div class="auth-wrapper" id="app">
+  <div class="auth-card">
+    <div class="logo-area">
+      <img src="https://wxyzofficial.sirv.com/USC-Election/cas.png" alt="CAS Logo">
+      <h2>CAS Memo Repository</h2>
+      <span>College of Arts & Sciences</span>
+    </div>
+
+    <!-- tabs -->
+    <div class="auth-tabs">
+      <button id="tabLogin" class="active"><i class="fas fa-sign-in-alt"></i> Login</button>
+      <button id="tabSignup"><i class="fas fa-user-plus"></i> Sign up</button>
+    </div>
+
+    <!-- login form -->
+    <div id="loginForm" class="auth-form">
+      <div class="input-group"><i class="fas fa-envelope"></i><input type="email" id="loginEmail" placeholder="Email address" autocomplete="email"></div>
+      <div class="input-group"><i class="fas fa-lock"></i><input type="password" id="loginPassword" placeholder="Password"><button class="toggle-pw" type="button"><i class="fas fa-eye" id="loginPwToggle"></i></button></div>
+      <button class="btn-primary" id="loginBtn"><i class="fas fa-arrow-right-to-bracket"></i> Log in</button>
+      <div id="loginError" class="error-msg hidden"><i class="fas fa-circle-exclamation"></i><span></span></div>
+    </div>
+
+    <!-- signup form -->
+    <div id="signupForm" class="auth-form hidden">
+      <div class="input-group"><i class="fas fa-user"></i><input type="text" id="signupName" placeholder="Full Name"></div>
+      <div class="input-group"><i class="fas fa-envelope"></i><input type="email" id="signupEmail" placeholder="Email address"></div>
+      <div class="input-group"><i class="fas fa-lock"></i><input type="password" id="signupPassword" placeholder="Password (min 6 chars)"><button class="toggle-pw" type="button"><i class="fas fa-eye" id="signupPwToggle"></i></button></div>
+      <div class="input-group"><i class="fas fa-check-circle"></i><input type="password" id="signupConfirm" placeholder="Confirm password"></div>
+      <button class="btn-primary" id="signupBtn"><i class="fas fa-user-plus"></i> Create account</button>
+      <div id="signupError" class="error-msg hidden"><i class="fas fa-circle-exclamation"></i><span></span></div>
+    </div>
+
+    <div class="auth-footer" id="switchText">Already have an account? <a id="switchToLogin">Log in</a></div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  // ---------- FIREBASE ----------
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAdwvS8k2uCh8Awkx9rb5-qPkKQXKpxMWo",
+  authDomain: "fd4dfh4.firebaseapp.com",
+  projectId: "fd4dfh4",
+  storageBucket: "fd4dfh4.firebasestorage.app",
+  messagingSenderId: "95646382164",
+  appId: "1:95646382164:web:7adf5be1af03f8197955c1",
+  measurementId: "G-GGCF0QEZNR"
+};
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // ---------- DOM refs ----------
+  const loginForm = document.getElementById('loginForm');
+  const signupForm = document.getElementById('signupForm');
+  const tabLogin = document.getElementById('tabLogin');
+  const tabSignup = document.getElementById('tabSignup');
+  const switchToLogin = document.getElementById('switchToLogin');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
+  const signupName = document.getElementById('signupName');
+  const signupEmail = document.getElementById('signupEmail');
+  const signupPassword = document.getElementById('signupPassword');
+  const signupConfirm = document.getElementById('signupConfirm');
+  const signupBtn = document.getElementById('signupBtn');
+  const signupError = document.getElementById('signupError');
+  const loginPwToggle = document.getElementById('loginPwToggle');
+  const signupPwToggle = document.getElementById('signupPwToggle');
+
+  // ---------- TOAST ----------
+  function showToast(message, type = 'info', icon = 'fa-circle-info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<i class="fas ${icon}"></i><span class="msg">${message}</span><button class="close-toast"><i class="fas fa-xmark"></i></button>`;
+    container.appendChild(toast);
+    toast.querySelector('.close-toast').onclick = () => toast.remove();
+    setTimeout(() => toast.remove(), 5000);
+  }
+
+  // ---------- UI helpers ----------
+  function setLoading(btn, loading) {
+    btn.disabled = loading;
+    btn.innerHTML = loading ? `<i class="fas fa-spinner fa-spin"></i> Loading...` : btn.dataset.orig || btn.textContent;
+  }
+
+  function showError(el, msg) { 
+    if (msg) { 
+      el.classList.remove('hidden'); 
+      el.querySelector('span').textContent = msg; 
+    } else el.classList.add('hidden'); 
+  }
+
+  // ---------- AUTH STATE ----------
+  // Use a flag to prevent redirect loops
+  let isRedirecting = false;
+  
+  auth.onAuthStateChanged(user => {
+    if (user && !isRedirecting) {
+      isRedirecting = true;
+      window.location.href = 'main.html';
+    }
+  });
+
+  // ---------- TOGGLE PW ----------
+  function togglePw(input, icon) {
+    if (input.type === 'password') { 
+      input.type = 'text'; 
+      icon.classList.replace('fa-eye', 'fa-eye-slash'); 
+    } else { 
+      input.type = 'password'; 
+      icon.classList.replace('fa-eye-slash', 'fa-eye'); 
+    }
+  }
+  loginPwToggle.addEventListener('click', () => togglePw(loginPassword, loginPwToggle));
+  signupPwToggle.addEventListener('click', () => togglePw(signupPassword, signupPwToggle));
+
+  // ---------- TABS ----------
+  function showLogin() {
+    loginForm.classList.remove('hidden');
+    signupForm.classList.add('hidden');
+    tabLogin.classList.add('active');
+    tabSignup.classList.remove('active');
+    document.getElementById('switchText').innerHTML = `Don't have an account? <a id="switchToSignup">Create one</a>`;
+    document.getElementById('switchToSignup').addEventListener('click', showSignup);
+    showError(loginError, null);
+    showError(signupError, null);
+  }
+  function showSignup() {
+    loginForm.classList.add('hidden');
+    signupForm.classList.remove('hidden');
+    tabSignup.classList.add('active');
+    tabLogin.classList.remove('active');
+    document.getElementById('switchText').innerHTML = `Already have an account? <a id="switchToLogin">Log in</a>`;
+    document.getElementById('switchToLogin').addEventListener('click', showLogin);
+    showError(loginError, null);
+    showError(signupError, null);
+  }
+  tabLogin.addEventListener('click', showLogin);
+  tabSignup.addEventListener('click', showSignup);
+  switchToLogin.addEventListener('click', showLogin);
+  // default login
+
+  // ---------- LOGIN ----------
+  loginBtn.addEventListener('click', async () => {
+    const email = loginEmail.value.trim();
+    const pass = loginPassword.value;
+    if (!email || !pass) { showError(loginError, 'Please fill in all fields.'); return; }
+    showError(loginError, null);
+    setLoading(loginBtn, true);
+    try {
+      await auth.signInWithEmailAndPassword(email, pass);
+      // redirect handled by onAuthStateChanged
+    } catch (e) {
+      showError(loginError, e.message);
+      setLoading(loginBtn, false);
+      isRedirecting = false;
+    }
+  });
+
+  // ---------- SIGNUP ----------
+  signupBtn.addEventListener('click', async () => {
+    const name = signupName.value.trim();
+    const email = signupEmail.value.trim();
+    const pass = signupPassword.value;
+    const confirm = signupConfirm.value;
+    if (!name || !email || !pass || !confirm) { showError(signupError, 'All fields are required.'); return; }
+    if (pass.length < 6) { showError(signupError, 'Password must be at least 6 characters.'); return; }
+    if (pass !== confirm) { showError(signupError, 'Passwords do not match.'); return; }
+    showError(signupError, null);
+    setLoading(signupBtn, true);
+    try {
+      const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      // Create user document in Firestore
+      await db.collection('users').doc(cred.user.uid).set({
+        name: name,
+        email: email,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      showToast('Account created successfully!', 'success', 'fa-check-circle');
+      // The onAuthStateChanged will handle redirect
+      // But we need to reset loading state if redirect doesn't happen
+      setLoading(signupBtn, false);
+    } catch (e) {
+      showError(signupError, e.message);
+      setLoading(signupBtn, false);
+      isRedirecting = false;
+    }
+  });
+
+  // store original texts for loading
+  loginBtn.dataset.orig = `<i class="fas fa-arrow-right-to-bracket"></i> Log in`;
+  //signupBtn.dataset.orig = `<i class="fas fa-user-plus"></i> Create account`;
+
+  console.log('CAS Memo Repository – Login ready');
+</script>
+</body>
+</html>
