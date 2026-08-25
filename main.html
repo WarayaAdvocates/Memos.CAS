@@ -98,6 +98,7 @@
     .modal-actions .btn-danger:hover{background:#a02030;}
     .modal-actions .btn-cancel{background:#eef3f9;color:#2a3a4a;}
     .modal-actions .btn-cancel:hover{background:#dce3ed;}
+    .modal-actions .btn:disabled{opacity:0.6;cursor:not-allowed;}
     .file-info{font-size:0.85rem;color:#2a4a6a;background:#f2f6fc;padding:0.4rem 1rem;border-radius:30px;display:inline-block;}
     .file-info.error{background:#fee;color:#b22234;border:1px solid #fdd;}
     .file-info.success{background:#e8f5e9;color:#2b7a4b;border:1px solid #c8e6c9;}
@@ -128,6 +129,14 @@
     .settings-section .item-row .item-actions .view-settings-btn{color:#0b2a4a;}
     .settings-section .item-row .item-actions .view-settings-btn:hover{background:#eef3f9;}
     .settings-empty{color:#7a95b0;font-size:0.9rem;padding:0.5rem 0;}
+    /* Folder header with upload button */
+    .folder-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.8rem;margin-bottom:1.2rem;}
+    .folder-header .folder-tabs-wrapper{display:flex;gap:0.6rem;flex-wrap:wrap;flex:1;}
+    .folder-header .upload-btn-wrapper{display:flex;gap:0.6rem;align-items:center;}
+    .folder-header .upload-btn-wrapper .btn-upload-folder{background:#f5b300;border:none;padding:0.5rem 1.2rem;border-radius:30px;font-weight:600;color:#0b2a4a;cursor:pointer;transition:0.15s;display:flex;align-items:center;gap:8px;font-size:0.9rem;white-space:nowrap;}
+    .folder-header .upload-btn-wrapper .btn-upload-folder:hover{background:#e6a800;transform:translateY(-1px);box-shadow:0 4px 12px rgba(245,179,0,0.3);}
+    .folder-header .upload-btn-wrapper .btn-upload-folder i{font-size:1rem;}
+    @media(max-width:600px){.folder-header{flex-direction:column;align-items:stretch;}.folder-header .upload-btn-wrapper{justify-content:flex-end;}.folder-header .upload-btn-wrapper .btn-upload-folder{width:100%;justify-content:center;}}
   </style>
 </head>
 <body>
@@ -167,7 +176,12 @@
     </div>
     <!-- folder view (years/folders) -->
     <div id="folderView" class="hidden">
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem;" id="folderTabs"></div>
+      <div class="folder-header">
+        <div class="folder-tabs-wrapper" id="folderTabs"></div>
+        <div class="upload-btn-wrapper">
+          <button class="btn-upload-folder" onclick="showUploadMemo()"><i class="fas fa-upload"></i> Upload Memo</button>
+        </div>
+      </div>
       <div id="memoContainer"></div>
     </div>
     <!-- settings view -->
@@ -786,9 +800,23 @@
       <div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="saveYearBtn">Save</button></div>
     `);
     document.getElementById('saveYearBtn').onclick = async ()=>{
+      const btn = document.getElementById('saveYearBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+      
       const val = document.getElementById('yearInput').value.trim();
-      if (!val || val.length!==4 || isNaN(val)) { showToast('Enter a valid 4-digit year.', 'warning'); return; }
-      if (allYears.some(y => y.year === val)) { showToast('Year already exists.', 'warning'); return; }
+      if (!val || val.length!==4 || isNaN(val)) { 
+        showToast('Enter a valid 4-digit year.', 'warning'); 
+        btn.disabled = false;
+        btn.innerHTML = 'Save';
+        return; 
+      }
+      if (allYears.some(y => y.year === val)) { 
+        showToast('Year already exists.', 'warning'); 
+        btn.disabled = false;
+        btn.innerHTML = 'Save';
+        return; 
+      }
       try {
         await db.collection('years').add({ year: val, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         closeModal();
@@ -799,6 +827,8 @@
       } catch (error) {
         console.error('Error adding year:', error);
         showToast('Error adding year', 'error');
+        btn.disabled = false;
+        btn.innerHTML = 'Save';
       }
     };
   };
@@ -812,10 +842,23 @@
       <div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="saveFolderBtn">Save</button></div>
     `);
     document.getElementById('saveFolderBtn').onclick = async ()=>{
+      const btn = document.getElementById('saveFolderBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+      
       const name = document.getElementById('folderNameInput').value.trim();
-      if (!name) { showToast('Folder name is required.', 'warning'); return; }
+      if (!name) { 
+        showToast('Folder name is required.', 'warning'); 
+        btn.disabled = false;
+        btn.innerHTML = 'Save';
+        return; 
+      }
       const yearDoc = allYears.find(y => y.year === currentYear);
-      if (!yearDoc) return;
+      if (!yearDoc) {
+        btn.disabled = false;
+        btn.innerHTML = 'Save';
+        return;
+      }
       try {
         await db.collection('years').doc(yearDoc.id).collection('folders').add({ name, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         closeModal();
@@ -824,6 +867,8 @@
       } catch (error) {
         console.error('Error adding folder:', error);
         showToast('Error adding folder', 'error');
+        btn.disabled = false;
+        btn.innerHTML = 'Save';
       }
     };
   }
@@ -866,13 +911,27 @@
       }
     };
     document.getElementById('uploadMemoBtn').onclick = async ()=>{
+      const btn = document.getElementById('uploadMemoBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+      
       const name = document.getElementById('memoNameInput').value.trim();
       const date = document.getElementById('memoDateInput').value;
       const folderId = document.getElementById('folderSelect').value;
       const file = document.getElementById('pdfFileInput').files[0];
-      if (!name || !date || !file) { showToast('Please fill all fields and select a PDF.', 'warning'); return; }
+      
+      if (!name || !date || !file) { 
+        showToast('Please fill all fields and select a PDF.', 'warning'); 
+        btn.disabled = false;
+        btn.innerHTML = 'Upload';
+        return; 
+      }
       const folder = allFolders.find(f => f.id === folderId);
-      if (!folder) return;
+      if (!folder) {
+        btn.disabled = false;
+        btn.innerHTML = 'Upload';
+        return;
+      }
       
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -882,11 +941,13 @@
           // Double-check Base64 size before uploading
           if (base64.length > 900000) {
             showToast('PDF is too large after encoding. Please use a smaller file.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = 'Upload';
             return;
           }
           
           const yearDoc = allYears.find(y => y.year === currentYear);
-          const docRef = await db.collection('memos').add({
+          await db.collection('memos').add({
             memoName: name,
             memoDate: new Date(date),
             year: currentYear,
@@ -913,7 +974,14 @@
           } else {
             showToast('Error uploading memo: ' + error.message, 'error');
           }
+          btn.disabled = false;
+          btn.innerHTML = 'Upload';
         }
+      };
+      reader.onerror = ()=>{
+        showToast('Error reading file.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = 'Upload';
       };
       reader.readAsDataURL(file);
     };
@@ -974,6 +1042,10 @@
       <div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">Cancel</button><button class="btn btn-danger" id="confirmDeleteBtn">Delete Memo</button></div>
     `);
     document.getElementById('confirmDeleteBtn').onclick = async ()=>{
+      const btn = document.getElementById('confirmDeleteBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+      
       try {
         await db.collection('memos').doc(memoId).delete();
         // Remove from thumbnail cache
@@ -985,6 +1057,8 @@
       } catch (error) {
         console.error('Error deleting memo:', error);
         showToast('Error deleting memo', 'error');
+        btn.disabled = false;
+        btn.innerHTML = 'Delete Memo';
       }
     };
   }
@@ -1023,13 +1097,27 @@
       };
       
       document.getElementById('saveEditBtn').onclick = async ()=>{
+        const btn = document.getElementById('saveEditBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
         const name = document.getElementById('editMemoName').value.trim();
         const date = document.getElementById('editMemoDate').value;
         const folderId = document.getElementById('editFolderSelect').value;
         const file = document.getElementById('editPdfFile').files[0];
-        if (!name || !date) { showToast('Name and date required.', 'warning'); return; }
+        
+        if (!name || !date) { 
+          showToast('Name and date required.', 'warning'); 
+          btn.disabled = false;
+          btn.innerHTML = 'Save Changes';
+          return; 
+        }
         const folder = allFolders.find(f => f.id === folderId);
-        if (!folder) return;
+        if (!folder) {
+          btn.disabled = false;
+          btn.innerHTML = 'Save Changes';
+          return;
+        }
         
         let updateData = { memoName: name, memoDate: new Date(date), folderId, folderName: folder.name, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
         
@@ -1040,6 +1128,8 @@
               const base64 = e.target.result.split(',')[1];
               if (base64.length > 900000) {
                 showToast('PDF is too large after encoding. Please use a smaller file.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = 'Save Changes';
                 return;
               }
               updateData.base64Data = base64;
@@ -1059,7 +1149,14 @@
               } else {
                 showToast('Error updating memo: ' + error.message, 'error');
               }
+              btn.disabled = false;
+              btn.innerHTML = 'Save Changes';
             }
+          };
+          reader.onerror = ()=>{
+            showToast('Error reading file.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = 'Save Changes';
           };
           reader.readAsDataURL(file);
         } else {
@@ -1072,6 +1169,8 @@
           } catch (error) {
             console.error('Error updating memo:', error);
             showToast('Error updating memo', 'error');
+            btn.disabled = false;
+            btn.innerHTML = 'Save Changes';
           }
         }
       };
